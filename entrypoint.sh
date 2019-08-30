@@ -2,10 +2,11 @@
 
 sh -c "echo $*"
 
-sh -c "NAME: $INPUT_NAME"
-sh -c "NAME: $INPUT_fILE"
+sh -c "echo NAME: $INPUT_NAME"
+sh -c "echo FILE: $INPUT_FILE"
 
 sh -c "cat /README.md"
 sh -c "cat /github/workspace/README.md"
-sh -c "cat /github/workspace/target/surefire-reports/TEST-com.xpand.java.CalcTest.xml"
+#sh -c "cat /github/workspace/target/surefire-reports/TEST-com.xpand.java.CalcTest.xml"
+sh -c "cat /github/workspace/$INPUT_FILE"
 sh -c "find /github/workspace/ -type f"
