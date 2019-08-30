@@ -1,0 +1,15 @@
+name: 'dummy'
+description: 'Dummy GitHub Action'
+author: 'Sergio Freire <@bitcoder>'
+inputs: 
+  name:
+    description: 'User defined name'
+    required: false 
+branding:
+  color: 'red' 
+  icon: 'umbrella'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.name }}
