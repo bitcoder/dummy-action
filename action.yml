@@ -1,4 +1,4 @@
-name: 'dummy'
+name: 'dummy-action'
 description: 'Dummy GitHub Action'
 author: 'Sergio Freire <@bitcoder>'
 inputs: 
