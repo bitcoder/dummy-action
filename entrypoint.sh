@@ -1,6 +1,6 @@
 #!/bin/sh -l
 
-sh -c "echo $*"
+sh -c "echo ARGS: $*"
 
 sh -c "echo NAME: $INPUT_NAME"
 sh -c "echo FILE: $INPUT_FILE"
