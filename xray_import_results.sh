@@ -6,9 +6,9 @@
 #  xray_import_results.sh -r junit.xml -f junit -p CALC -v 3.0 -u admin -w admin -j http://192.168.56.102 
 #  xray_import_results.sh -r junit.xml -f junit -p CALC -c -i 1234567890 -s 0987654321 
 #
-# Limitations:
+# Limitations / TO DOs:
 # - does not check if parameters are consistent
-#
+# - review parameters syntax
 # Done:
 # - does URL encode parameters
 # - does  add GET parameters only if they are not empty
@@ -207,7 +207,7 @@ then
   then
     # standard endpoints
 
-    if [ "$REPORT" == "cucumber" ]
+    if [ "$INPUT_FORMAT" == "cucumber" ]
     then
         curl $CURL_OPTS -H "Content-Type: application/json" -X POST -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD --data @"$INPUT_REPORT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/cucumber"
     else
@@ -218,7 +218,7 @@ then
   else
     # multipart endpoints
     #TO DO
-   curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" -F "info=@info.json" "$JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT/multipart"
+   curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" -F "info=@info.json" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT/multipart"
 fi
 else
  #  Xray CLOUD
