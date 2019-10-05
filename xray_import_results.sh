@@ -16,20 +16,20 @@
 #LELO=$LELO || "script" # "" evaluates to true, so does not work
 #LELO=$(test -z "$LELO" && echo "script" || echo "$LELO")
 
-DEBUG=0
-MULTIPART=0
-CLOUD=0
-#JIRA_URL=""
-#USERNAME=""
-#PASSWORD=""
-#REPORT=""
-#FORMAT=""
-#PROJECT=""
-#VERSION=""
-#REVISION=""
-#TESTPLAN=""
-#TESTEXECUTION=""
-#TEST_ENVIRONMENTS=""
+INPUT_DEBUG=0
+INPUT_MULTIPART=0
+INPUT_CLOUD=0
+#INPUT_JIRA_JIRA_URL=""
+#INPUT_JIRA_USERNAME=""
+#INPUT_JIRA_PASSWORD=""
+#INPUT_REPORT=""
+#INPUT_FORMAT=""
+#INPUT_PROJECT=""
+#INPUT_VERSION=""
+#INPUT_REVISION=""
+#INPUT_TESTPLAN=""
+#INPUT_TESTEXECUTION=""
+#INPUT_TEST_ENVIRONMENTS=""
 
 
 CFG_FILE="./xray_import_results.default"
@@ -65,6 +65,8 @@ function contains() {
 }
 
 check_valid_values () {
+  # https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+
  local name=$1
  local value=$2
 
@@ -75,7 +77,6 @@ check_valid_values () {
 #echo "name: $name"
 #echo "value: $value"
 #echo "valid_values: $valid_values"
-
 
 
  #check_supported_formats "format" $FORMAT "junit testng nunit cucumber"
@@ -125,12 +126,12 @@ build_get_params() {
 #revision  
 #fixVersion
  local s=""
- s="$s$(append_str "projectKey" "$PROJECT")"
- s="$s$(append_str "testExecKey" "$TESTEXECUTION")"
- s="$s$(append_str "testPlanKey" "$TESTPLAN")"
- s="$s$(append_str "revision" "$REVISION")"
- s="$s$(append_str "fixVersion" "$VERSION")"    
- s="$s$(append_str "testEnvironments" "$(echo $TEST_ENVIRONMENTS|tr " " ";")")"
+ s="$s$(append_str "projectKey" "$INPUT_PROJECT")"
+ s="$s$(append_str "testExecKey" "$INPUT_TESTEXECUTION")"
+ s="$s$(append_str "testPlanKey" "$INPUT_TESTPLAN")"
+ s="$s$(append_str "revision" "$INPUT_REVISION")"
+ s="$s$(append_str "fixVersion" "$INPUT_VERSION")"    
+ s="$s$(append_str "testEnvironments" "$(echo $INPUT_TEST_ENVIRONMENTS|tr " " ";")")"
  echo $s
 }
 
@@ -140,36 +141,35 @@ build_get_params() {
 OPTIND=1
     while getopts dcj:u:w:r:f:p:v:b:t:e:i:s:x: opt ; do
         case "$opt" in
-            d)  DEBUG=1;;
-            c)  CLOUD=1;;
-            j)  JIRA_URL="$OPTARG";;
-            u)  USERNAME="$OPTARG";;
-            w)  PASSWORD="$OPTARG";;
-            r)  REPORT="$OPTARG";;
-            f)  FORMAT="$OPTARG";;
-            p)  PROJECT="$OPTARG";;
-            v)  VERSION="$OPTARG";;
-            b)  REVISION="$OPTARG";;
-            t)  TESTPLAN="$OPTARG";;
-            e)  TESTEXECUTION="$OPTARG";;
-            i)  CLIENT_ID="$OPTARG";;
-            s)  CLIENT_SECRET="$OPTARG";;
-            x)  TEST_ENVIRONMENTS="$OPTARG";;
+            d)  INPUT_DEBUG=1;;
+            c)  INPUT_CLOUD=1;;
+            j)  INPUT_JIRA_URL="$OPTARG";;
+            u)  INPUT_USERNAME="$OPTARG";;
+            w)  INPUT_PASSWORD="$OPTARG";;
+            r)  INPUT_REPORT="$OPTARG";;
+            f)  INPUT_FORMAT="$OPTARG";;
+            p)  INPUT_PROJECT="$OPTARG";;
+            v)  INPUT_VERSION="$OPTARG";;
+            b)  INPUT_REVISION="$OPTARG";;
+            t)  INPUT_TESTPLAN="$OPTARG";;
+            e)  INPUT_TESTEXECUTION="$OPTARG";;
+            i)  INPUT_CLIENT_ID="$OPTARG";;
+            s)  INPUT_CLIENT_SECRET="$OPTARG";;
+            x)  INPUT_TEST_ENVIRONMENTS="$OPTARG";;
         esac
     done
 
-echo "cloud: $CLOUD"
-echo "report: $REPORT"
-echo "format: $FORMAT"
-echo "project: $PROJECT"
-echo "jira_url: $JIRA_URL"
+echo "cloud: $INPUT_CLOUD"
+echo "report: $INPUT_REPORT"
+echo "format: $INPUT_FORMAT"
+echo "project: $INPUT_PROJECT"
+echo "jira_url: $INPUT_JIRA_URL"
 
 
 
 valid_formats=("junit" "testng" "nunit" "cucumber" "robot") 
-check_valid_values "format" $FORMAT valid_formats
-
-# etc
+check_valid_values "format" $INPUT_FORMAT valid_formats
+# TO DO: complete validations
 
 
 MANDATORY_FIELDS="REPORT FORMAT"
@@ -183,7 +183,6 @@ else
     # if server/DC, then JIRA_URL, USERNAME and PASSWORD are mandatory
     MANDATORY_FIELDS="$MANDATORY_FIELDS JIRA_URL USERNAME PASSWORD" 
 fi
-
 
 
 CURL_OPTS=""
@@ -210,16 +209,16 @@ then
 
     if [ "$REPORT" == "cucumber" ]
     then
-        curl $CURL_OPTS -H "Content-Type: application/json" -X POST -u $USERNAME:$PASSWORD --data @"$REPORT" "$JIRA_URL/rest/raven/1.0/import/execution/cucumber"
+        curl $CURL_OPTS -H "Content-Type: application/json" -X POST -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD --data @"$INPUT_REPORT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/cucumber"
     else
         #curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $USERNAME:$PASSWORD -F "file=@$REPORT" "$JIRA_URL/rest/raven/1.0/import/execution/$FORMAT?projectKey=$PROJECT"
         GET_PARAMS=$(build_get_params)
-        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $USERNAME:$PASSWORD -F "file=@$REPORT" "$JIRA_URL/rest/raven/1.0/import/execution/$FORMAT?$GET_PARAMS"
+        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT?$GET_PARAMS"
     fi
   else
     # multipart endpoints
     #TO DO
-   curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $USERNAME:$PASSWORD -F "file=@$REPORT" -F "info=@info.json" "$JIRA_URL/rest/raven/1.0/import/execution/$FORMAT/multipart"
+   curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" -F "info=@info.json" "$JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT/multipart"
 fi
 else
  #  Xray CLOUD
@@ -230,9 +229,9 @@ else
  fi
 
  token=""
- if [ -n "$CLIENT_ID" ] || [ -n "$CLIENT_SECRET" ]
+ if [ -n "$INPUT_CLIENT_ID" ] || [ -n "$INPUT_CLIENT_SECRET" ]
  then
-    CLOUD_AUTH_STR="{ \"client_id\": \"$CLIENT_ID\",\"client_secret\": \"$CLIENT_SECRET\" }"
+    CLOUD_AUTH_STR="{ \"client_id\": \"$INPUT_CLIENT_ID\",\"client_secret\": \"$INPUT_CLIENT_SECRET\" }"
     #echo "CLOUD_AUTH_STR: $CLOUD_AUTH_STR"
     token=$(curl $CURL_OPTS -H "Content-Type: application/json" -X POST --data "$CLOUD_AUTH_STR" "$XRAY_CLOUD_ENDPOINT/api/v1/authenticate"| tr -d '"')
 
@@ -241,7 +240,7 @@ else
  fi
  test $? == 0 || error "failed to obtain token. Please check credentials."
 
- curl -s -S -H "Content-Type: text/xml" -X POST -H "Authorization: Bearer $token"  --data @"$REPORT" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$FORMAT?projectKey=$PROJECT&fixVersion=$VERSION&revision=$REVISION&testEnvironments=$ENVIRONMENTS&testPlanKey=$TESTPLAN&testExecKey=$TESTEXECUTION"
+ curl -s -S -H "Content-Type: text/xml" -X POST -H "Authorization: Bearer $token"  --data @"$INPUT_REPORT" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$FORMAT?projectKey=$INPUT_PROJECT&fixVersion=$INPUT_VERSION&revision=$INPUT_REVISION&testEnvironments=$INPUT_TEST_ENVIRONMENTS&testPlanKey=$INPUT_TESTPLAN&testExecKey=$INPUT_TESTEXECUTION"
 
 fi
  
