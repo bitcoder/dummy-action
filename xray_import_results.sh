@@ -175,7 +175,7 @@ check_valid_values "format" $INPUT_FORMAT valid_formats
 MANDATORY_FIELDS="REPORT FORMAT"
 # REPORT and format are always mandatory
 
-if [[ "$CLOUD" -eq "1" ]]
+if [[ "$INPUT_CLOUD" -eq "1" ]]
 then
     # if cloud, then CLIENT_ID, CLIENT_SECRET are mandatory
    MANDATORY_FIELDS="$MANDATORY_FIELDS CLIENT_ID CLIENT_SECRET"
@@ -199,7 +199,7 @@ then
  error "file with results not found at $INPUT_REPORT"
 fi
 
-if [[ "$CLOUD" -ne "1" ]]
+if [[ "$INPUT_CLOUD" -ne "1" ]]
 then
   # Xray server/DC
 
@@ -219,7 +219,7 @@ then
     # multipart endpoints
     #TO DO
    curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" -F "info=@info.json" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT/multipart"
-fi
+  fi
 else
  #  Xray CLOUD
 
