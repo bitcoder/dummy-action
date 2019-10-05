@@ -5,5 +5,5 @@ COPY . /
 
 RUN apt update && apt install -y curl
 
-ADD entrypoint.sh /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+ADD xray_import_results.sh /xray_import_results.sh
+ENTRYPOINT ["/xray_import_results.sh"]
