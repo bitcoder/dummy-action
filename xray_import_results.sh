@@ -194,9 +194,9 @@ else
 fi
 
 
-if [ ! -e "$REPORT" ]
+if [ ! -e "$INPUT_REPORT" ]
 then
- error "file with results not found at $REPORT"
+ error "file with results not found at $INPUT_REPORT"
 fi
 
 if [[ "$CLOUD" -ne "1" ]]
