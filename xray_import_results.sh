@@ -19,12 +19,13 @@
 INPUT_DEBUG=0
 INPUT_MULTIPART=0
 INPUT_CLOUD=0
+#INPUT_CLOUD_AUTH_FILE
 #INPUT_JIRA_JIRA_URL=""
 #INPUT_JIRA_USERNAME=""
 #INPUT_JIRA_PASSWORD=""
+#INPUT_FILE=""
 #INPUT_REPORT=""
-#INPUT_FORMAT=""
-#INPUT_PROJECT=""
+#INPUT_PROJECT_KEY=""
 #INPUT_VERSION=""
 #INPUT_REVISION=""
 #INPUT_TESTPLAN=""
@@ -50,7 +51,7 @@ error () {
  exit 1
 }
 
-
+# check if array contains given value
 function contains() {
     local n=$#
     local value=${!n}
@@ -64,31 +65,42 @@ function contains() {
     return 1
 }
 
-check_valid_values () {
-  # https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+# check if given array, by name, contains given value
+check_valid_values_for_param () {
+ # https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
 
- local name=$1
+ local param=$1
  local value=$2
 
  local array_name=$3[@]
  local valid_values=("${!array_name}")
- #valid_values=("junit" "testng" "nunit" "cucumber" "robot")
 
-#echo "name: $name"
-#echo "value: $value"
-#echo "valid_values: $valid_values"
-
-
- #check_supported_formats "format" $FORMAT "junit testng nunit cucumber"
  if [ $(contains "${valid_values[@]}" "$value") == "n" ]; then
-    error "$value is not a valid $name"
+    error "$value is not a valid $param"
  fi
 }
 
+show_syntax () {
+ error "please review the syntax"
+}
 
+check_if_mandatory_params_are_all_present () {
+ local array_name=$1[@]
+ local array=("${!array_name}")
 
-#https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command
+    for param_name in "${array[@]}"
+    do
+      param_value="${!param_name}"
+      if [ ${#param_value} -eq 0 ]
+      then
+        error "please review the syntax; $param_name must be defined (as environment variable or through the respective argument)"
+      fi
+    done
+} 
+
+# URL encodes given string
 rawurlencode() {
+  #https://stackoverflow.com/questions/296536/how-to-urlencode-data-for-curl-command
   local string="${1}"
   local strlen=${#string}
   local encoded=""
@@ -106,6 +118,8 @@ rawurlencode() {
   REPLY="${encoded}"   #+or echo the result (EASIER)... or both... :p
 }
 
+# return a string with key and value, URL encoded
+# TO DO: URL encode key also?
 append_str() {
     local skey=$1
     local svalue=$2
@@ -118,15 +132,10 @@ append_str() {
     echo $s
 } 
 
+# add additional GET parameters even on POST requests (both server and cloud)
 build_get_params() {
-#projectKey
-#testExecKey
-#testPlanKey
-#testEnvironments
-#revision  
-#fixVersion
  local s=""
- s="$s$(append_str "projectKey" "$INPUT_PROJECT")"
+ s="$s$(append_str "projectKey" "$INPUT_PROJECT_KEY")"
  s="$s$(append_str "testExecKey" "$INPUT_TESTEXECUTION")"
  s="$s$(append_str "testPlanKey" "$INPUT_TESTPLAN")"
  s="$s$(append_str "revision" "$INPUT_REVISION")"
@@ -139,50 +148,67 @@ build_get_params() {
 
 
 OPTIND=1
-    while getopts dcj:u:w:r:f:p:v:b:t:e:i:s:x: opt ; do
+    while getopts dcma:o:t:j:u:w:f:r:k:v:b:p:x:i:s:e: opt ; do
         case "$opt" in
             d)  INPUT_DEBUG=1;;
             c)  INPUT_CLOUD=1;;
+            m)  INPUT_MULTIPART=1;;
+            a)  INPUT_CLOUD_AUTH_FILE="$OPTARG";;
+            o)  INPUT_INFO_OBJECT="$OPTARG";;
+            t)  INPUT_TESTINFO_OBJECT="$OPTARG";;
             j)  INPUT_JIRA_URL="$OPTARG";;
-            u)  INPUT_USERNAME="$OPTARG";;
-            w)  INPUT_PASSWORD="$OPTARG";;
+            u)  INPUT_JIRA_USERNAME="$OPTARG";;
+            w)  INPUT_JIRA_PASSWORD="$OPTARG";;
+            f)  INPUT_FILE="$OPTARG";;
             r)  INPUT_REPORT="$OPTARG";;
-            f)  INPUT_FORMAT="$OPTARG";;
-            p)  INPUT_PROJECT="$OPTARG";;
+            k)  INPUT_PROJECT_KEY="$OPTARG";;
             v)  INPUT_VERSION="$OPTARG";;
             b)  INPUT_REVISION="$OPTARG";;
-            t)  INPUT_TESTPLAN="$OPTARG";;
-            e)  INPUT_TESTEXECUTION="$OPTARG";;
+            p)  INPUT_TESTPLAN="$OPTARG";;
+            x)  INPUT_TESTEXECUTION="$OPTARG";;
             i)  INPUT_CLIENT_ID="$OPTARG";;
             s)  INPUT_CLIENT_SECRET="$OPTARG";;
-            x)  INPUT_TEST_ENVIRONMENTS="$OPTARG";;
+            e)  INPUT_TEST_ENVIRONMENTS="$OPTARG";;
         esac
     done
 
-echo "cloud: $INPUT_CLOUD"
-echo "report: $INPUT_REPORT"
-echo "format: $INPUT_FORMAT"
-echo "project: $INPUT_PROJECT"
-echo "jira_url: $INPUT_JIRA_URL"
+if [[ "$DEBUG" -eq 1 ]]
+then
+    echo "cloud: $INPUT_CLOUD"
+    echo "file: $INPUT_FILE"
+    echo "report format: $INPUT_REPORT"
+    echo "multipart: $INPUT_MULTIPART"
+    echo "project: $INPUT_PROJECT_KEY"
+    echo "jira_url: $INPUT_JIRA_URL"
+fi
 
 
-
-valid_formats=("junit" "testng" "nunit" "cucumber" "robot") 
-check_valid_values "format" $INPUT_FORMAT valid_formats
+valid_formats=("junit" "testng" "nunit" "xunit" "cucumber" "behave" "robot")
+# TO DO: add and validate xray, behave, xunit and other 
+# TO DO: some formats are dependent on Xray deployment type
+check_valid_values_for_param "report format" $INPUT_REPORT valid_formats
 # TO DO: complete validations
 
 
-MANDATORY_FIELDS="REPORT FORMAT"
-# REPORT and format are always mandatory
+MANDATORY_FIELDS=("INPUT_FILE" "INPUT_REPORT")
+# INPUT_FILE and INPUT_REPORT are always mandatory
 
 if [[ "$INPUT_CLOUD" -eq "1" ]]
 then
-    # if cloud, then CLIENT_ID, CLIENT_SECRET are mandatory
-   MANDATORY_FIELDS="$MANDATORY_FIELDS CLIENT_ID CLIENT_SECRET"
+  # if cloud, then either require CLIENT_ID, CLIENT_SECRET or INPUT_CLOUD_AUTH_FILE
+  if [ ${#INPUT_CLOUD_AUTH_FILE} -eq 0 ]
+  then
+    MANDATORY_FIELDS+=("INPUT_JIRA_CLIENT_ID" "INPUT_JIRA_CLIENT_SECRET")
+  else
+   MANDATORY_FIELDS+=("INPUT_CLOUD_AUTH_FILE")
+  fi
 else
     # if server/DC, then JIRA_URL, USERNAME and PASSWORD are mandatory
-    MANDATORY_FIELDS="$MANDATORY_FIELDS JIRA_URL USERNAME PASSWORD" 
+    MANDATORY_FIELDS=("INPUT_JIRA_URL" "INPUT_JIRA_USERNAME" "INPUT_JIRA_PASSWORD")
 fi
+
+#check_valid_values "report format" $ MANDATORY_FIELDS
+check_if_mandatory_params_are_all_present MANDATORY_FIELDS
 
 
 CURL_OPTS=""
@@ -190,59 +216,107 @@ if [[ "$DEBUG" -eq 1 ]]
 then
  CURL_OPTS="$CURL_OPTS -fail -s -S"
 else
- CURL_OPTS="$CURL_OPTS"
+ CURL_OPTS="$CURL_OPTS -s -S"
 fi
 
 
-if [ ! -e "$INPUT_REPORT" ]
+if [ ! -e "$INPUT_FILE" ]
 then
- error "file with results not found at $INPUT_REPORT"
+ error "file with results not found ($INPUT_FILE)"
 fi
 
 if [[ "$INPUT_CLOUD" -ne "1" ]]
 then
   # Xray server/DC
 
-  if [ "$MULTIPART" -ne 1 ]
+  if [ "$INPUT_MULTIPART" -ne 1 ]
   then
     # standard endpoints
 
-    if [ "$INPUT_FORMAT" == "cucumber" ]
+    if [ "$INPUT_REPORT" == "cucumber" ] || [ "$INPUT_REPORT" == "cucumber" ] 
     then
-        curl $CURL_OPTS -H "Content-Type: application/json" -X POST -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD --data @"$INPUT_REPORT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/cucumber"
+        curl $CURL_OPTS -H "Content-Type: application/json" -X POST -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD --data @"$INPUT_FILE" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/cucumber"
     else
-        #curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $USERNAME:$PASSWORD -F "file=@$REPORT" "$JIRA_URL/rest/raven/1.0/import/execution/$FORMAT?projectKey=$PROJECT"
         GET_PARAMS=$(build_get_params)
-        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT?$GET_PARAMS"
+        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_FILE" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_REPORT?$GET_PARAMS"
     fi
   else
     # multipart endpoints
-    #TO DO
-   curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_REPORT" -F "info=@info.json" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_FORMAT/multipart"
+
+    if [ ! -e "$INPUT_INFO_OBJECT" ]
+    then
+     error "file with \"test\" JSON object not found ($INPUT_INFO_OBJECT)"
+    fi
+
+    if [ ${#INPUT_TESTINFO_OBJECT} -gt 0 ]
+    then
+        if [ ! -e "$INPUT_TESTINFO_OBJECT" ]
+        then
+         error "file with \"test\" JSON object not found ($INPUT_TESTINFO_OBJECT)"
+        fi
+        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_FILE" -F "info=@$INPUT_INFO_OBJECT" -F "testInfo=@$INPUT_TESTINFO_OBJECT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_REPORT/multipart"
+    else
+        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -u $INPUT_JIRA_USERNAME:$INPUT_JIRA_PASSWORD -F "file=@$INPUT_FILE" -F "info=@$INPUT_INFO_OBJECT" "$INPUT_JIRA_URL/rest/raven/1.0/import/execution/$INPUT_REPORT/multipart"
+    fi
+
   fi
 else
  #  Xray CLOUD
-
- if [ ! -e "$CLOUD_AUTH_FILE" ]
- then
-  error "file with Xray's Cloud client_id and client_secret was not found"
- fi
-
  token=""
- if [ -n "$INPUT_CLIENT_ID" ] || [ -n "$INPUT_CLIENT_SECRET" ]
- then
-    CLOUD_AUTH_STR="{ \"client_id\": \"$INPUT_CLIENT_ID\",\"client_secret\": \"$INPUT_CLIENT_SECRET\" }"
-    #echo "CLOUD_AUTH_STR: $CLOUD_AUTH_STR"
-    token=$(curl $CURL_OPTS -H "Content-Type: application/json" -X POST --data "$CLOUD_AUTH_STR" "$XRAY_CLOUD_ENDPOINT/api/v1/authenticate"| tr -d '"')
 
+ if [ ${#INPUT_CLOUD_AUTH_FILE} -gt 0 ] #&& [ ! -e "$INPUT_CLOUD_AUTH_FILE" ]
+ then
+    if [ ! -e "$INPUT_CLOUD_AUTH_FILE" ]
+    then
+        error "file with Xray's Cloud client_id and client_secret was not found ($INPUT_CLOUD_AUTH_FILE)"
+    else
+        token=$(curl $CURL_OPTS -H "Content-Type: application/json" -X POST --data @"$INPUT_CLOUD_AUTH_FILE" "$XRAY_CLOUD_ENDPOINT/api/v1/authenticate"| tr -d '"')
+    fi
  else
-    token=$(curl $CURL_OPTS -H "Content-Type: application/json" -X POST --data @"$CLOUD_AUTH_FILE" "$XRAY_CLOUD_ENDPOINT/api/v1/authenticate"| tr -d '"')
+    if [ -n "$INPUT_CLIENT_ID" ] && [ -n "$INPUT_CLIENT_SECRET" ]
+    then
+        CLOUD_AUTH_STR="{ \"client_id\": \"$INPUT_CLIENT_ID\",\"client_secret\": \"$INPUT_CLIENT_SECRET\" }"
+        #echo "CLOUD_AUTH_STR: $CLOUD_AUTH_STR"
+        token=$(curl $CURL_OPTS -H "Content-Type: application/json" -X POST --data "$CLOUD_AUTH_STR" "$XRAY_CLOUD_ENDPOINT/api/v1/authenticate"| tr -d '"')
+    else
+        error "Client ID and Client Secret must be both specified"
+    fi
  fi
+
  test $? == 0 || error "failed to obtain token. Please check credentials."
 
- curl -s -S -H "Content-Type: text/xml" -X POST -H "Authorization: Bearer $token"  --data @"$INPUT_REPORT" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$FORMAT?projectKey=$INPUT_PROJECT&fixVersion=$INPUT_VERSION&revision=$INPUT_REVISION&testEnvironments=$INPUT_TEST_ENVIRONMENTS&testPlanKey=$INPUT_TESTPLAN&testExecKey=$INPUT_TESTEXECUTION"
+ if [ "$INPUT_MULTIPART" -ne 1 ]
+  then
+    # standard endpoints
 
+    if [ "$INPUT_REPORT" == "cucumber" ] || [ "$INPUT_REPORT" == "behave" ]
+    then
+        curl $CURL_OPTS -H "Content-Type: application/json" -X POST -H "Authorization: Bearer $token" --data @"$INPUT_FILE" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$INPUT_REPORT"
+    else
+        GET_PARAMS=$(build_get_params)
+        # TO DO: fix hardcoded xml content type; is it needed at all?
+        curl $CURL_OPTS -H "Content-Type: text/xml" -X POST -H "Authorization: Bearer $token" --data @"$INPUT_FILE" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$INPUT_REPORT?$GET_PARAMS"
+    fi
+
+  else
+    # multipart endpoints    
+
+    if [ ! -e "$INPUT_INFO_OBJECT" ]
+    then
+     error "file with \"test\" JSON object not found ($INPUT_INFO_OBJECT)"
+    fi
+
+    if [ ${#INPUT_TESTINFO_OBJECT} -gt 0 ]
+    then
+        if [ ! -e "$INPUT_TESTINFO_OBJECT" ]
+        then
+         error "file with \"test\" JSON object not found ($INPUT_TESTINFO_OBJECT)"
+        fi
+        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -X POST -H "Authorization: Bearer $token"  -F "results=@$INPUT_FILE" -F "info=@$INPUT_INFO_OBJECT" -F "testInfo=@$INPUT_TESTINFO_OBJECT" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$INPUT_REPORT/multipart"
+    else
+        curl $CURL_OPTS -H "Content-Type: multipart/form-data" -X POST -H "Authorization: Bearer $token"  -F "results=@$INPUT_FILE" -F "info=@$INPUT_INFO_OBJECT" "$XRAY_CLOUD_ENDPOINT/api/v1/import/execution/$INPUT_REPORT/multipart"
+    fi
+
+  fi
 fi
  
-
-
